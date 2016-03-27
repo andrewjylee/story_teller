@@ -1,16 +1,27 @@
 import urllib2
 import string
 import re
+import sys
 from data import html_parser
 
 class Team:
     def __init__(self):
+        # TODO: Fix player names to include first name initial, 
+        # in case some players have the same last name
+        # TODO: Get team names
+        #self.team_name = name
         self.players = dict()
+
+    def set_opponent(self, opponent):
+        self.opponent = opponent
+        
+    def add_player(self, player):
+        self.players[player] = {'points': 0, 'rebounds': 0, 'assists': 0, 'steals': 0, 'blocks': 0, 'turnovers': 0, 'fouls': 0}
         
 
     def print_stats(self):
         for k in self.players.keys():
-            print k, self.players[k]
+            print k, self.players[k]['points'], self.players[k]['rebounds'], self.players[k]['assists'], self.players[k]['steals'], self.players[k]['blocks'], self.players[k]['turnovers'], self.players[k]['fouls']
 
     def add_points(self, player, points):
         if points == "2-pt":
@@ -23,12 +34,13 @@ class Team:
             print "should never be here"
 
         if player in self.players.keys():
-            self.players[player] += points
+            self.players[player]['points'] += points
         else:
-            self.players[player] = points
+            self.add_player(player)
+            self.players[player]['points'] = points
 
     def score_tracker(self, line):
-        pattern = "^(\d+-\d+)\s\+?\d?[A-Z]\.\s(\w+)\smakes\s(\d-pt|free throw).*$"
+        pattern = "^(\d+-\d+)\s\+?\d?[A-Z]\.\s(\w+-?\w+)\smakes\s(\d-pt|free throw).*$"
         match = re.search(pattern, line)
 
         if match:
@@ -36,11 +48,145 @@ class Team:
             player = match.group(2)
             points = match.group(3)
             self.add_points(player, points)
+        else:
+            print line
+            print 'score error'
+            sys.exit()
+
+    def rebound_tracker(self, line):
+        # TODO split defensive and offensive rebounds?
+        pattern = "^.*rebound by [A-Z]\.\s(\w+).*$"
+        match = re.search(pattern, line)
+
+        if match:
+            player = match.group(1)
+            if player in self.players.keys():
+                self.players[player]['rebounds'] += 1
+            else:
+                self.add_player(player)
+                self.players[player]['rebounds'] = 1
+        else:
+            if 'rebound by Team' not in line:
+                print line
+                print 'rebound error'
+                sys.exit()
+
+    def assist_tracker(self, line):
+        pattern = "^.*\(assist by [A-Z]\.\s(\w+).*$"
+        match = re.search(pattern, line)
+
+        if match:
+            player = match.group(1)
+            if player in self.players.keys():
+                self.players[player]['assists'] += 1
+            else:
+                self.add_player(player)
+                self.players[player]['assists'] = 1
+        else:
+            print line
+            print 'assist error'
+            sys.exit()
+
+    def turnover_tracker(self, line):
+        pattern = "^.*Turnover by [A-Z]\. (\w+).*$"
+        match = re.search(pattern, line)
+
+        if match:
+            player = match.group(1)
+            if player in self.players.keys():
+                self.players[player]['turnovers'] += 1
+            else:
+                self.add_player(player)
+                self.players[player]['turnovers'] = 1
+        else:
+            if 'Turnover by Team' not in line:
+                print line
+                print 'turnover error'
+                sys.exit()
+
+    def steal_tracker(self, line):
+        pattern = "^.*steal by [A-Z]\. (\w+).*$"
+        match = re.search(pattern, line)
+
+        if match:
+            player = match.group(1)
+            if player in self.players.keys():
+                self.players[player]['steals'] += 1
+            else:
+                self.add_player(player)
+                self.players[player]['steals'] = 1
+        else:
+            print line
+            print 'steal error'
+            sys.exit()
 
     def stats_tracker(self, line):
+        # TODO
+        # FG percentage
+        # FT percentage
+        # blocks
         if 'makes' in line:
             self.score_tracker(line)
+        if 'rebound' in line:
+            self.rebound_tracker(line)
+        if 'assist' in line:
+            self.assist_tracker(line)
+        if 'Turnover' in line:
+            self.turnover_tracker(line)
+            if 'steal' in line:
+                self.opponent.steal_tracker(line)
 
+
+    def get_outstanding_stats(self):
+        """
+        # Score >= 20
+        # Rebound >= 14
+        # Assists >= 10
+        # TODO:
+        # Steals >= 5
+        # Blocks >= 5
+        # Turnovers > 5
+        # Fouls > 5
+        # Double Doubles
+        # Triple Doubles
+        """
+        # Score
+        for k, v in self.players.iteritems():
+            if v['points'] >= 20:
+                print k, " had ", v['points'], " points"
+            if v['rebounds'] >= 14:
+                print k, " had ", v['rebounds'], " rebounds"
+            if v['assists'] >= 10:
+                print k, " had ", v['assists'], " assists"
+
+                
+            
+
+
+
+
+class Game:
+    def __init__(self, home, away, score):
+        self.home = home
+        self.away = away
+        self.score = score
+        pattern = "(\d+)-(\d+)"
+        match = re.search(pattern, self.score)
+        self.away_score = int(match.group(1))
+        self.home_score = int(match.group(2))
+
+    def get_winner(self):
+        print self.away_score, self.home_score
+        if self.home_score > self.away_score:
+            print "Home team won!"
+        else:
+            print "Away team won!"
+
+    def summarize(self):
+        self.get_winner()
+        self.home.get_outstanding_stats()
+        self.away.get_outstanding_stats()
+ 
 
 
 
@@ -113,25 +259,14 @@ def clean_up(line):
 
 
 
-def get_winner(score):
-    pattern = "(\d+)-(\d+)"
-    match = re.search(pattern, score)
-    home_score = match.group(1)
-    away_score = match.group(2)
-    if home_score > away_score:
-        print "Home team won!"
-    else:
-        print "Away team won!"
+       
 
-        
-
-def summarize(score, home, away):
-    get_winner(score)
 
 
 if __name__ == "__main__":
 
     # TODO: make url out of user input of date and team
+    #gameid = sys.argv[1]
     gameid = "201603240BRK"
     html_class = html_parser(gameid)
 
@@ -140,6 +275,8 @@ if __name__ == "__main__":
 
     home = Team()
     away = Team()
+    home.set_opponent(away)
+    away.set_opponent(home)
 
     for i in range(len(lines)):
         line = lines[i]
@@ -156,6 +293,7 @@ if __name__ == "__main__":
                     away.stats_tracker(score + " " + summary)
                 else:
                     print 'should never be here?'
+                #print score, summary
             continue
 
         # TODO: quarter-granularity?
@@ -168,7 +306,9 @@ if __name__ == "__main__":
             break
 
 
-    summarize(score, home, away)
+    # Score = away - home
+    game = Game(home, away, score)
+    game.summarize()
     print '--'
     home.print_stats()
     print '--'
