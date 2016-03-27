@@ -17,37 +17,40 @@ class Team:
         
     def add_player(self, player):
         self.players[player] = {'points': 0, 'rebounds': 0, 'assists': 0, 'steals': 0, 'blocks': 0, 'turnovers': 0, 'fouls': 0}
+
+    def update_stats(self, player, stat_type, increment_value):
+        if player in self.players.keys():
+            self.players[player][stat_type] += increment_value
+        else:
+            self.add_player(player)
+            self.players[player][stat_type] = increment_value
         
 
     def print_stats(self):
+        print 'points', 'rebounds', 'assists', 'steals', 'blocks', 'turnovers', 'fouls'
         for k in self.players.keys():
             print k, self.players[k]['points'], self.players[k]['rebounds'], self.players[k]['assists'], self.players[k]['steals'], self.players[k]['blocks'], self.players[k]['turnovers'], self.players[k]['fouls']
-
-    def add_points(self, player, points):
-        if points == "2-pt":
-            points = 2
-        elif points == "3-pt":
-            points = 3
-        elif points == "free throw":
-            points = 1
-        else:
-            print "should never be here"
-
-        if player in self.players.keys():
-            self.players[player]['points'] += points
-        else:
-            self.add_player(player)
-            self.players[player]['points'] = points
 
     def score_tracker(self, line):
         pattern = "^(\d+-\d+)\s\+?\d?[A-Z]\.\s(\w+-?\w+)\smakes\s(\d-pt|free throw).*$"
         match = re.search(pattern, line)
 
         if match:
-            game_score = match.group(1)
             player = match.group(2)
             points = match.group(3)
-            self.add_points(player, points)
+            if points == "2-pt":
+                points = 2
+            elif points == "3-pt":
+                points = 3
+            elif points == "free throw":
+                points = 1
+            else:
+                print "should never be here"
+                print 'score_tracker error'
+                print line
+                sys.exit()
+
+            self.update_stats(player, 'points', points)
         else:
             print line
             print 'score error'
@@ -55,16 +58,11 @@ class Team:
 
     def rebound_tracker(self, line):
         # TODO split defensive and offensive rebounds?
-        pattern = "^.*rebound by [A-Z]\.\s(\w+).*$"
+        pattern = "^.*rebound by [A-Z]\.\s(\w+-?\w+).*$"
         match = re.search(pattern, line)
 
         if match:
-            player = match.group(1)
-            if player in self.players.keys():
-                self.players[player]['rebounds'] += 1
-            else:
-                self.add_player(player)
-                self.players[player]['rebounds'] = 1
+            self.update_stats(match.group(1), 'rebounds', 1)
         else:
             if 'rebound by Team' not in line:
                 print line
@@ -72,32 +70,22 @@ class Team:
                 sys.exit()
 
     def assist_tracker(self, line):
-        pattern = "^.*\(assist by [A-Z]\.\s(\w+).*$"
+        pattern = "^.*\(assist by [A-Z]\.\s(\w+-?\w+).*$"
         match = re.search(pattern, line)
 
         if match:
-            player = match.group(1)
-            if player in self.players.keys():
-                self.players[player]['assists'] += 1
-            else:
-                self.add_player(player)
-                self.players[player]['assists'] = 1
+            self.update_stats(match.group(1), 'assists', 1)
         else:
             print line
             print 'assist error'
             sys.exit()
 
     def turnover_tracker(self, line):
-        pattern = "^.*Turnover by [A-Z]\. (\w+).*$"
+        pattern = "^.*Turnover by [A-Z]\. (\w+-?\w+).*$"
         match = re.search(pattern, line)
 
         if match:
-            player = match.group(1)
-            if player in self.players.keys():
-                self.players[player]['turnovers'] += 1
-            else:
-                self.add_player(player)
-                self.players[player]['turnovers'] = 1
+            self.update_stats(match.group(1), 'turnovers', 1)
         else:
             if 'Turnover by Team' not in line:
                 print line
@@ -105,32 +93,40 @@ class Team:
                 sys.exit()
 
     def steal_tracker(self, line):
-        pattern = "^.*steal by [A-Z]\. (\w+).*$"
+        pattern = "^.*steal by [A-Z]\. (\w+-?\w+).*$"
         match = re.search(pattern, line)
 
         if match:
-            player = match.group(1)
-            if player in self.players.keys():
-                self.players[player]['steals'] += 1
-            else:
-                self.add_player(player)
-                self.players[player]['steals'] = 1
+            self.update_stats(match.group(1), 'steals', 1)
         else:
             print line
             print 'steal error'
+            sys.exit()
+
+    def block_tracker(self, line):
+        pattern = "^.*\(block by [A-Z]\. (\w+-?\w+).*$"
+        match = re.search(pattern, line)
+
+        if match:
+            self.update_stats(match.group(1), 'blocks', 1)
+        else:
+            print line
+            print 'block error'
             sys.exit()
 
     def stats_tracker(self, line):
         # TODO
         # FG percentage
         # FT percentage
-        # blocks
+        # fouls
         if 'makes' in line:
             self.score_tracker(line)
         if 'rebound' in line:
             self.rebound_tracker(line)
         if 'assist' in line:
             self.assist_tracker(line)
+        if 'block' in line:
+            self.opponent.block_tracker(line)
         if 'Turnover' in line:
             self.turnover_tracker(line)
             if 'steal' in line:
