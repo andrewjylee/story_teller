@@ -194,9 +194,8 @@ class Team:
         # Blocks >= 5
         # Turnovers > 5
         # Fouls > 5
-        # Double Doubles
         # Triple Doubles
-        # TODO:
+        # Double Doubles
         # FG% > 0.7? && FGA > 12 ? 
         # 3P% >= 0.5 && 3PA >= 9 ?
         """
@@ -225,6 +224,11 @@ class Team:
                 print k, " had a double double with ", v['points'], " points and ", v['assists'], " assists"
             elif v['assists'] >= 10 and v['rebounds'] >= 10:
                 print k, " had a double double with ", v['rebounds'], " rebounds and ", v['assists'], " assists"
+
+            if v['FGA'] > 12 and v['FG']/float(v['FGA']) > 0.7:
+                print k, " made ", v['FG'], " out of ", v['FGA'], " shots"
+            if v['3PA'] >= 9 and v['3P']/float(v['3PA']) >= 0.5:
+                print k, " made ", v['3P'], " out of ", v['3PA'], " shots"
 
                 
 
